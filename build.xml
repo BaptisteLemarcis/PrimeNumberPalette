@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="PrimeNumberPalette" basedir="." default="jar" xmlns:ivy="antlib:org.apache.ivy.ant">
+
+    <xmlproperty file="config.xml"/>
+
+    <property name="scriptversion" value="0.2"/>
+	<property name="skip.tests" value="true"/>
+
+    <path id="build.dir.depjars">
+        <fileset dir="${build.dir.dep}" includes="**/*.jar"/>
+        <fileset dir="${build.dir.lib}" includes="**/*.jar"/>
+    </path>
+
+    <available classname="org.apache.ivy.Main" property="ivy.installed"/>
+
+    <target name="install-ivy" description="Install ivy" unless="ivy.installed">
+        <mkdir dir="${user.home}/.ant/lib"/>
+        <get dest="${user.home}/.ant/lib/ivy.jar" src="http://search.maven.org/remotecontent?filepath=org/apache/ivy/ivy/2.4.0-rc1/ivy-2.4.0-rc1.jar"/>
+    </target>
+
+    <target name="resolve" depends="install-ivy" description="Use ivy to resolve classpaths">
+        <ivy:cachepath id="build.ivydep">
+            <dependency org="org.java-websocket" name="Java-WebSocket" rev="1.3.0" conf="default" />
+        </ivy:cachepath>
+
+    </target>
+
+    <target name="init" description="Initialize all the build">
+        <mkdir dir="${build.dir.bin}"/>
+        <mkdir dir="${build.dir.release}"/>
+    </target>
+
+    <target name="release" depends="jar" description="Compile and zip the release">
+        <delete file="${build.dir.release}/${build.name}-${build.version}.zip"/>
+		<zip basedir="." destfile="${build.dir.release}/${build.name}-${build.version}.zip" includes="${build.name}.jar,plugin.xml,Readme.md"/>
+		<delete file="${build.name}.jar"/>
+    </target>
+
+    <target name="zip" depends="jar" description="Zips the compiled jar">
+        <delete file="${build.dir.release}/${build.name}-${build.version}.zip"/>
+        <zip basedir="." destfile="${build.name}-${build.version}.zip" includes="${build.name}.jar,plugin.xml,Readme.md"/>
+        <delete file="${build.name}.jar"/>
+    </target>
+
+    <target name="dist" depends="jar" description="Same as jar">
+        <!-- Do nothing -->
+    </target>
+
+    <target name="compile" depends="init, resolve" description="Compile the sources">
+        <mkdir dir="${build.dir.bin}"/>
+        <javac
+                target="${build.jdk}" source="${build.jdk}"
+                srcdir="${build.dir.src}"
+                destdir="${build.dir.bin}"
+                includeantruntime="false"
+                >
+            <classpath>
+                <path refid="build.ivydep" ></path>
+                <path refid="build.dir.depjars" ></path>
+                <fileset dir="./">
+                    <include name="beepbeep-3.jar"/>
+                </fileset>
+            </classpath>
+        </javac>
+        <copy todir="${build.dir.bin}" includeemptydirs="false">
+            <fileset dir="${build.dir.src}" excludes="**/*.java"/>
+        </copy>
+    </target>
+
+    <target name="compile-tests" depends="compile" description="Compile the sources">
+        <mkdir dir="${build.dir.test.bin}"/>
+        <javac
+                target="${build.jdk}" source="${build.jdk}"
+                srcdir="${build.dir.test.src}"
+                destdir="${build.dir.test.bin}"
+                includeantruntime="false"
+        >
+            <classpath>
+                <path refid="build.ivydep" ></path>
+                <path refid="build.dir.depjars" ></path>
+                <pathelement location="${build.dir.bin}"/>
+            </classpath>
+        </javac>
+        <copy todir="${build.dir.test.bin}" includeemptydirs="false">
+            <fileset dir="${build.dir.test.src}" excludes="**/*.java"/>
+        </copy>
+    </target>
+
+    <target name="jar" depends="compile" description="Create the runnable JAR">
+        <tstamp>
+            <format property="TODAY" pattern="yyyy-MM-dd HH:mm:ss" />
+        </tstamp>
+        <jar destfile="${build.name}.jar" filesetmanifest="skip">
+            <manifest>
+                <attribute name="Main-Class" value="${build.mainclass}"/>
+                <attribute name="Class-Path" value="."/>
+                <attribute name="Built-By" value="${user.name}"/>
+                <attribute name="Built-Date" value="${TODAY}"/>
+                <attribute name="Implementation-Version" value="${build.version}"/>
+            </manifest>
+            <fileset dir="${build.dir.bin}"/>
+            <zipgroupfileset dir="${build.dir.dep}">
+                <include name="*" if="${build.jar.withdeps}"/>
+            </zipgroupfileset>
+            <fileset dir="${build.dir.src}">
+                <include name="*" if="${build.jar.withsrc}"/>
+            </fileset>
+        </jar>
+    </target>
+
+    <target name="test" depends="compile,compile-tests" description="Perform unit tests and generate coverage report">
+        <mkdir dir="${build.dir.test.report}"/>
+        <junit printsummary="yes" haltonfailure="false" fork="true"
+               failureproperty="test.failed">
+            <classpath>
+
+                <pathelement location="${build.dir.test.bin}"/>
+                <path refid="build.ivydep" ></path>
+                <path refid="build.dir.depjars" ></path>
+                <pathelement location="${build.dir.bin}"/>
+            </classpath>
+            <formatter type="brief" usefile="false"/>
+            <formatter type="xml"/>
+            <batchtest fork="yes" todir="${build.dir.test.report}">
+                <fileset dir="${build.dir.test.src}">
+                    <include name="**/*.java"/>
+                </fileset>
+            </batchtest>
+        </junit>
+        <!-- jUnit report -->
+        <junitreport todir="${build.dir.test.report}">
+            <fileset dir="${build.dir.test.report}">
+                <include name="TEST-*.xml"/>
+            </fileset>
+            <report format="frames" todir="${build.dir.test.report}"/>
+        </junitreport>
+        <fail if="test.failed"/>
+    </target>
+
+    <target name="clean" description="Clean the project">
+        <delete>
+            <fileset dir="${basedir}" includes="**/*.xml~"/>
+        </delete>
+        <delete>
+            <fileset dir="${build.dir.bin}" includes="**/*.*"/>
+        </delete>
+    </target>
+
+    <target name="show-properties" description="Print all properties">
+        <echoproperties/>
+    </target>
+
+    <target name="version" description="Show build script version">
+        <echo message="This is version ${scriptversion} of the script" level="info"/>
+    </target>
+</project>

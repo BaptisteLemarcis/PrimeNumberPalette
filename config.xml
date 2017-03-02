@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+
+<build>
+
+    <!-- The project's name -->
+    <name>PrimeNumberPalette</name>
+	
+    <!-- The project's version number -->
+    <version>0.1-alpha</version>
+	
+	<!-- The project's jdk version -->
+	<jdk>1.8</jdk>
+	
+	<dir>
+		<dep>dep</dep>
+        <lib>lib</lib>
+		<src>src</src>
+		<bin>bin</bin>
+		<release>release</release>
+        <test>
+            <src>tests/src</src>
+            <bin>tests/bin</bin>
+            <report>tests/report</report>
+        </test>
+
+	</dir>
+	
+    <!-- The project's author. -->
+    <author>Baptiste Lemarcis</author>
+
+    <!-- The project's main class -->
+    <mainclass>ca.uqac.liara.PackageExtension</mainclass>
+
+    <!-- Installation folders -->
+    <srcdir>src</srcdir>
+    <bindir>bin</bindir>
+
+    <!-- Output jar -->
+    <jar>
+        <withdeps>true</withdeps>
+        <withsrc>false</withsrc>
+    </jar>
+	
+</build>
